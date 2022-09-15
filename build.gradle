@@ -1,0 +1,80 @@
+import com.google.cloud.tools.jib.api.buildplan.ImageFormat
+
+plugins {
+	id 'org.springframework.boot' version '2.7.3'
+	id 'io.spring.dependency-management' version '1.0.13.RELEASE'
+	id 'java'
+	id "org.flywaydb.flyway" version "9.3.0"
+	id 'com.google.cloud.tools.jib' version '2.7.1'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '11'
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	compileOnly 'org.projectlombok:lombok:1.18.20'
+	annotationProcessor 'org.projectlombok:lombok:1.18.20'
+// https://mvnrepository.com/artifact/javax.validation/validation-api
+	implementation group: 'javax.validation', name: 'validation-api', version: '2.0.1.Final'
+// https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-data-jpa
+	implementation group: 'org.springframework.boot', name: 'spring-boot-starter-data-jpa', version: '2.7.3'
+	// https://mvnrepository.com/artifact/org.hibernate/hibernate-c3p0
+	implementation group: 'org.hibernate', name: 'hibernate-c3p0', version: '5.4.21.Final'
+// https://mvnrepository.com/artifact/org.postgresql/postgresql
+	implementation group: 'org.postgresql', name: 'postgresql', version: '42.5.0'
+	// https://mvnrepository.com/artifact/org.flywaydb/flyway-gradle-plugin
+	implementation group: 'org.flywaydb', name: 'flyway-gradle-plugin', version: '9.3.0'
+// https://mvnrepository.com/artifact/org.hibernate/hibernate-gradle-plugin
+	implementation group: 'org.hibernate', name: 'hibernate-gradle-plugin', version: '5.6.11.Final'
+// https://mvnrepository.com/artifact/jakarta.persistence/jakarta.persistence-api
+	implementation group: 'jakarta.persistence', name: 'jakarta.persistence-api', version: '3.0.0'
+
+}
+
+
+flyway {
+	url = 'jdbc:postgresql://localhost:5432/disc_db'
+	user = 'admin'
+	password = 'admin'
+	locations = ['classpath:db/migration']
+}
+
+flywayMigrate.dependsOn classes
+
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+jib {
+	var tag = "latest"
+	from {
+		image = "gcr.io/distroless/java:11"
+	}
+	to {
+		image = "semenvav/my-rest-api"
+		tags = [version, 'latest']
+		auth {
+			username = findProperty('DOCKERHUB_USERNAME')
+			password = findProperty('DOCKERHUB_PASSWORD')
+		}
+	}
+	container {
+		mainClass = "${group}.Application"
+		ports = ['80']
+		volumes = ['/data']
+		environment = [
+				'VERSION': '1',
+				'DATA_DIR': '/data',
+				'APPLICATION_PORT' : '80',
+				'DEVELOPMENT_MODE' : 'false'
+		]
+	}
+}
